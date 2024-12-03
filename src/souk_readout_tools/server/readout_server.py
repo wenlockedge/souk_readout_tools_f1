@@ -597,6 +597,14 @@ class ReadoutServer:
                     num_samples = message.get('num_samples')
                     task = asyncio.create_task(self.get_samples(writer, num_samples))
                     self.tasks.append(task)
+
+                elif request == 'test_tracking_loop':
+                    num_samples = message.get('num_samples')
+                    freqs = message.get('freqs')
+                    delay = message.get('delay')
+                    task = asyncio.create_task(self.test_tracking_loop(writer, num_samples,freqs,delay))
+                    self.tasks.append(task)
+
                 
                 elif request == 'sweep':
                     if self.sweep_task is None or self.sweep_task.done():
@@ -853,7 +861,36 @@ class ReadoutServer:
             writer.close()
             await writer.wait_closed()
         
-
+    async def test_tracking_loop(self, writer, num_samples, freqs,delay):
+        try:
+            fast_read_params = firmware_lib.get_fast_read_params(self.r_fast)
+            freq_settings = firmware_lib.prepare_tone_frequency_settings_fast(self.r_fast, self.config_dict, freqs,detailed_output=False)
+            firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings,autosync=True)
+            freq_settings['chanmap_psb']=None
+            freq_settings['chanmap_pfb']=None
+            
+            err_count=0
+            prev_cnt=0
+            for _ in range(num_samples):
+                #cnt,data,err = firmware_lib.read_accumulated_data_fast(self.r_fast,fast_read_params)
+                # # data_bytes = data.tobytes()
+                firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings,autosync=True)
+                time.sleep(delay)
+                firmware_lib._wait_for_acc(self.r,0,0.001)
+                payload, cnt, err =  self.prepare_frame(fast_read_params)
+                writer.write(payload)
+                await writer.drain()
+                
+            print('total packet counter errors:', err_count)
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            print(f"Error testing tracking loop: {e}")
+            print(traceback.format_exc())
+        finally:
+            self.tasks.remove(asyncio.current_task())
+            writer.close()
+            await writer.wait_closed()
 
 
     async def stream_data(self):
