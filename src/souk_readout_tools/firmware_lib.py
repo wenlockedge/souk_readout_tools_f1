@@ -1382,10 +1382,10 @@ def apply_tone_frequency_settings_fast(r, r_fast, fast_tone_frequency_settings, 
     c1 = chanmap_psb is not None
     c2 = chanmap_pfb is not None
 
-    if c1 is not None:
+    if c1:
         # print('chanmap_psb set')
         r.psb_chanselect.set_channel_outmap(np.copy(chanmap_psb))
-    if c2 is not None:
+    if c2:
         # print('chanmap_pfb set')
         r.chanselect.set_channel_outmap(np.copy(chanmap_pfb))
     # if c1 or c2:
