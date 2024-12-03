@@ -877,7 +877,7 @@ class ReadoutServer:
             freq_settings['skip_chanmap_pfb']=True
             
             err_count=0
-            prev_cnt=0
+            last_cnt=None
             
             for _ in range(num_samples):
                 t0=time.time()
@@ -889,7 +889,7 @@ class ReadoutServer:
                 time.sleep(delay)
                 # firmware_lib._wait_for_acc(self.r,0,0.0001)
                 t2=time.time()
-                payload, cnt, err =  self.prepare_frame(fast_read_params)
+                payload, last_cnt, err =  self.prepare_frame(fast_read_params,last_cnt=last_cnt)
                 t3=time.time()
                 writer.write(payload)
                 t4=time.time()

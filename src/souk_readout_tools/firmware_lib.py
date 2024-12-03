@@ -2168,10 +2168,12 @@ def read_accumulated_data_fast(fast_read_params,num_tones=None,last_cnt=None):
     if last_cnt is None:
         start_acc_cnt = _blocking_wait_for_acc(acc,0.00001)
     else:
+        start_acc_cnt = acc.get_acc_cnt()
         if start_acc_cnt == last_cnt:
             start_acc_cnt = _blocking_wait_for_acc(acc,0.00001)
         else:
-            start_acc_cnt = acc.get_acc_cnt()
+            #count has incremented (possibly by more than 1)
+            pass
         
     t2=time.time()
     print(f'wait for acc: {t2-t1}')
