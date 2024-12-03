@@ -1078,7 +1078,7 @@ class ReadoutServer:
                                                    p,
                                                    autosync=True)
                 
-                firmware_lib._wait_for_acc(self.r,0,0.001)
+                firmware_lib._wait_for_acc(self.r,0,0.0001)
                 
                 # print('sweeping: getting_samples')
                 for s in range(samples_per_point):
