@@ -848,8 +848,8 @@ class ReadoutServer:
                 # # data_bytes = data.tobytes()
                 payload, cnt, err =  self.prepare_frame(fast_read_params)
                 writer.write(payload)
-                await writer.drain()
-                # await asyncio.sleep(0.0001)  
+            await writer.drain()
+            # await asyncio.sleep(0.0001)  
             print('total packet counter errors:', err_count)
         except asyncio.CancelledError:
             pass
