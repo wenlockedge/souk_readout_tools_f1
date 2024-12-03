@@ -948,8 +948,8 @@ def prepare_tone_frequency_settings_fast(r, config_dict, tone_frequencies,detail
                          'phase_incs_rx_formatted':phase_incs_rx_formatted,
                          'ri_steps_tx_formatted':ri_steps_tx_formatted,
                          'ri_steps_rx_formatted':ri_steps_rx_formatted,
-                         'chanmap_psb':chanmap_psb,
-                         'chanmap_pfb':chanmap_pfb,
+                         'chanmap_psb':chanmap_psb.copy(),
+                         'chanmap_pfb':chanmap_pfb.copy(),
                          'num_tones':num_tones}
     
     if detailed_output:
@@ -1378,9 +1378,11 @@ def apply_tone_frequency_settings_fast(r, r_fast, fast_tone_frequency_settings, 
     ri_steps_rx_formatted   = fast_tone_frequency_settings.get('ri_steps_rx_formatted')
     chanmap_psb   = fast_tone_frequency_settings.get('chanmap_psb')
     chanmap_pfb   = fast_tone_frequency_settings.get('chanmap_pfb')
+    skip_chanmap_psb = fast_tone_frequency_settings.get('skip_chanmap_psb',False)
+    skip_chanmap_pfb = fast_tone_frequency_settings.get('skip_chanmap_pfb',False)
     # num_tones     = fast_tone_frequency_settings.get('num_tones')
-    c1 = chanmap_psb is not None
-    c2 = chanmap_pfb is not None
+    c1 = not skip_chanmap_psb
+    c2 = not skip_chanmap_pfb
 
     if c1:
         # print('chanmap_psb set')

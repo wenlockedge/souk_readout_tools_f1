@@ -866,8 +866,8 @@ class ReadoutServer:
             fast_read_params = firmware_lib.get_fast_read_params(self.r_fast)
             freq_settings = firmware_lib.prepare_tone_frequency_settings_fast(self.r, self.config, freqs,detailed_output=False)
             firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings,autosync=True)
-            freq_settings['chanmap_psb']=None
-            freq_settings['chanmap_pfb']=None
+            freq_settings['skip_chanmap_psb']=True
+            freq_settings['skip_chanmap_pfb']=True
             
             err_count=0
             prev_cnt=0
