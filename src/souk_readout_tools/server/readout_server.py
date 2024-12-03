@@ -875,7 +875,7 @@ class ReadoutServer:
                 #cnt,data,err = firmware_lib.read_accumulated_data_fast(self.r_fast,fast_read_params)
                 # # data_bytes = data.tobytes()
                 firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings,autosync=True)
-                time.sleep(delay)
+                #time.sleep(delay)
                 firmware_lib._wait_for_acc(self.r,0,0.001)
                 payload, cnt, err =  self.prepare_frame(fast_read_params)
                 writer.write(payload)
