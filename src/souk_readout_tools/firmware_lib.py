@@ -2154,16 +2154,20 @@ def read_accumulated_data_fast(fast_read_params,num_tones=None):
     Read one sample of accumulated data from the RFSOC 
     utilising the faster katcp local memory transport.
     """
+    t0=time.time()
     acc=fast_read_params['acc']
     addrs=fast_read_params['addrs']
     nbytes=fast_read_params['nbytes']
     nbranch=fast_read_params['nbranch']
     base_addr=fast_read_params['base_addr']
     err = False
-
+    t1=time.time()
+    print(f'setup: {t1-t0}')
 
     # acc._wait_for_acc(0.00001)
     start_acc_cnt = _blocking_wait_for_acc(acc,0.00001)
+    t2=time.time()
+    print(f'wait for acc: {t2-t1}')
 
     if nbranch==1:
         raw = acc.host.transport.axil_mm[base_addr:base_addr + nbytes]
@@ -2173,11 +2177,16 @@ def read_accumulated_data_fast(fast_read_params,num_tones=None):
         for i in range(nbranch):
             raw = acc.host.transport.axil_mm[addrs[i]:addrs[i] + nbytes]
             dout[i::nbranch] = np.frombuffer(raw, dtype='<i4')
+    t3=time.time()
+    print(f'read mmap: {t3-t2}')
+
     stop_acc_cnt = acc.get_acc_cnt()
     if start_acc_cnt != stop_acc_cnt:
         acc.logger.warning('Accumulation counter changed while reading data!')
         err=True
-
+    t4=time.time()
+    print(f'check acc cnt: {t4-t3}')
+    
     if num_tones is None:
         return start_acc_cnt, dout, err
     else:
