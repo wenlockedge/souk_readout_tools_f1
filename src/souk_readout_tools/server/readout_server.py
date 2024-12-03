@@ -864,7 +864,7 @@ class ReadoutServer:
     async def test_tracking_loop(self, writer, num_samples, freqs,delay):
         try:
             fast_read_params = firmware_lib.get_fast_read_params(self.r_fast)
-            freq_settings = firmware_lib.prepare_tone_frequency_settings_fast(self.r_fast, self.config_dict, freqs,detailed_output=False)
+            freq_settings = firmware_lib.prepare_tone_frequency_settings_fast(self.r_fast, self.config, freqs,detailed_output=False)
             firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings,autosync=True)
             freq_settings['chanmap_psb']=None
             freq_settings['chanmap_pfb']=None
