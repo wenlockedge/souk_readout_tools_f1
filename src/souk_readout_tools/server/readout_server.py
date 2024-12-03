@@ -806,9 +806,10 @@ class ReadoutServer:
         num_headers = 10
         # # cnt = await firmware_lib._wait_for_acc(fast_read_params['acc'],0.0001)
         # cnt = firmware_lib._wait_for_acc(fast_read_params['acc'],0.0001)
-
+        t0=time.time()
         cnt,data,err = firmware_lib.read_accumulated_data_fast(fast_read_params)
-       
+        t1=time.time()
+        print('read_accumulated_data_fast:',t1-t0)
         # frame=data
         frame = np.zeros(len(data)+num_headers,dtype='<i4')
         frame[:len(data)] = data
@@ -822,13 +823,19 @@ class ReadoutServer:
         frame[-8] = int(self.stream_flags[FLAG_SET_AMPS].is_set())
         frame[-9] = int(self.stream_flags[FLAG_SET_FREQS].is_set())
         frame[-10] = int(self.stream_flags[FLAG_SERVER_REQUEST].is_set())
-        
+        t2=time.time()
+        print('fill frame:',t2-t1)
+
         data_bytes = frame.tobytes()
+        t3=time.time()
+        print('tobytes:',t3-t2)
 
         data_len = struct.pack('>I', len(data_bytes))
-
+        t4=time.time()
+        print('pack length:',t4-t3)
         payload = data_len+data_bytes
-
+        t5=time.time()
+        print('pack payload:',t5-t4)
         # return payload
         return payload,cnt,err
     
