@@ -600,7 +600,7 @@ class ReadoutServer:
 
                 elif request == 'test_tracking_loop':
                     num_samples = message.get('num_samples')
-                    freqs = message.get('freqs')
+                    freqs = np.array(message.get('freqs'))
                     delay = message.get('delay')
                     task = asyncio.create_task(self.test_tracking_loop(writer, num_samples,freqs,delay))
                     self.tasks.append(task)

@@ -423,7 +423,7 @@ class ReadoutClient:
             sample_data = {'data_raw':data_raw,'sample_rate':sample_rate,'system_information':info}
             return sample_data
 
-    def test_tracking_loop(self,num_samples,frequencies,delay=0,incl_system_info=True):
+    def test_tracking_loop(self,num_samples,frequencies,delay=0,incl_system_info=False):
         """
         Acquire num_samples samples from the readout server and return concatenated raw data.
         The loop will write the frequencies between every accumulation."""
