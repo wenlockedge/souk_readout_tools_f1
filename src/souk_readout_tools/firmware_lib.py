@@ -1372,6 +1372,7 @@ def fast_write_mixer(r_fast, phase_incs_tx_formatted,phase_incs_rx_formatted,ri_
 
 
 def apply_tone_frequency_settings_fast(r, r_fast, fast_tone_frequency_settings, autosync=True):
+    t0=time.time()
     phase_incs_tx_formatted = fast_tone_frequency_settings.get('phase_incs_tx_formatted')
     phase_incs_rx_formatted = fast_tone_frequency_settings.get('phase_incs_rx_formatted')
     ri_steps_tx_formatted   = fast_tone_frequency_settings.get('ri_steps_tx_formatted')
@@ -1395,18 +1396,22 @@ def apply_tone_frequency_settings_fast(r, r_fast, fast_tone_frequency_settings, 
     #     r.sync.arm_sync(wait=False)
     #     time.sleep(1)
     #     r.sync.sw_sync()
-
+    t1=time.time()
+    print(f'setup time: {t1-t0}')
     fast_write_mixer(r_fast,
                       phase_incs_tx_formatted,
                         phase_incs_rx_formatted,
                           ri_steps_tx_formatted,
                             ri_steps_rx_formatted)
-
+    t2=time.time()
+    print(f'write time: {t2-t1}')
     if autosync:
         # time.sleep(autosync_time_delay)
         r_fast.sync.arm_sync(wait=False)
         time.sleep(autosync_time_delay)
         r_fast.sync.sw_sync()
+    t3=time.time()
+    print(f'sync time: {t3-t2}')
 
 
 def set_tone_frequencies(r, config_dict, tone_frequencies, autosync=True, detailed_output=False):
