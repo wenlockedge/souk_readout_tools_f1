@@ -799,7 +799,7 @@ class ReadoutServer:
             print(f"Error sending response: {response} \n {e}")
             print(traceback.format_exc())
     
-    def prepare_frame(self,fast_read_params):
+    def prepare_frame(self,fast_read_params,last_cnt=None):
         """
         Prepare a frame for sending to a client.
         """
@@ -807,7 +807,7 @@ class ReadoutServer:
         # # cnt = await firmware_lib._wait_for_acc(fast_read_params['acc'],0.0001)
         # cnt = firmware_lib._wait_for_acc(fast_read_params['acc'],0.0001)
         t0=time.time()
-        cnt,data,err = firmware_lib.read_accumulated_data_fast(fast_read_params)
+        cnt,data,err = firmware_lib.read_accumulated_data_fast(fast_read_params,last_cnt=last_cnt)
         t1=time.time()
         print('read_accumulated_data_fast:',t1-t0)
         # frame=data
@@ -849,11 +849,11 @@ class ReadoutServer:
         try:
             fast_read_params = firmware_lib.get_fast_read_params(self.r_fast)
             err_count=0
-            prev_cnt=0
+            last_cnt=None
             for _ in range(num_samples):
                 #cnt,data,err = firmware_lib.read_accumulated_data_fast(self.r_fast,fast_read_params)
                 # # data_bytes = data.tobytes()
-                payload, cnt, err =  self.prepare_frame(fast_read_params)
+                payload, last_cnt, err =  self.prepare_frame(fast_read_params,last_cnt=last_cnt)
                 writer.write(payload)
             await writer.drain()
             # await asyncio.sleep(0.0001)  

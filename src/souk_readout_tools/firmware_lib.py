@@ -2149,7 +2149,7 @@ def get_fast_read_params(r_fast):
     
     return params
 
-def read_accumulated_data_fast(fast_read_params,num_tones=None):
+def read_accumulated_data_fast(fast_read_params,num_tones=None,last_cnt=None):
     """
     Read one sample of accumulated data from the RFSOC 
     utilising the faster katcp local memory transport.
@@ -2165,7 +2165,14 @@ def read_accumulated_data_fast(fast_read_params,num_tones=None):
     print(f'setup: {t1-t0}')
 
     # acc._wait_for_acc(0.00001)
-    start_acc_cnt = _blocking_wait_for_acc(acc,0.00001)
+    if last_cnt is None:
+        start_acc_cnt = _blocking_wait_for_acc(acc,0.00001)
+    else:
+        if start_acc_cnt == last_cnt:
+            start_acc_cnt = _blocking_wait_for_acc(acc,0.00001)
+        else:
+            start_acc_cnt = acc.get_acc_cnt()
+        
     t2=time.time()
     print(f'wait for acc: {t2-t1}')
 
@@ -2186,7 +2193,7 @@ def read_accumulated_data_fast(fast_read_params,num_tones=None):
         err=True
     t4=time.time()
     print(f'check acc cnt: {t4-t3}')
-    
+
     if num_tones is None:
         return start_acc_cnt, dout, err
     else:
