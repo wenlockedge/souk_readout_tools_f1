@@ -423,6 +423,57 @@ class ReadoutClient:
             sample_data = {'data_raw':data_raw,'sample_rate':sample_rate,'system_information':info}
             return sample_data
 
+    def test_tracking_loop(self,num_samples,frequencies,delay=0,incl_system_info=True):
+        """
+        Acquire num_samples samples from the readout server and return concatenated raw data.
+        The loop will write the frequencies between every accumulation."""
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((self.request_server_address, self.request_server_port))
+            message = {'request': 'test_tracking_loop', 'num_samples': num_samples
+                       ,'frequencies':frequencies,'delay':delay}
+            
+            # Send message length
+            message_data = json.dumps(message).encode()
+            message_len = struct.pack('>I', len(message_data))
+            s.sendall(message_len + message_data)
+            # # Pre-allocate bytearray to expected data length
+            alldatalen = 2048*2*4 + 10*4
+            data_raw = bytearray(alldatalen*num_samples)
+            view = memoryview(data_raw)
+
+            # i_data = np.zeros((num_samples,num_tones),dtype=int)
+            # q_data = np.zeros((num_samples,num_tones),dtype=int)
+            # cnt = np.zeros(num_samples,dtype=int)
+            # err = np.zeros(num_samples,dtype=int)
+            # flags = np.zeros((num_samples,8),dtype=int)
+            t0=time.time()
+            next_datalen=0
+            for j in range(num_samples):
+                packet_offset = j*next_datalen
+
+                # Read data length
+                raw_datalen = s.recv(4)
+                if not raw_datalen:
+                    break
+                next_datalen = struct.unpack('>I', raw_datalen)[0]
+                received_len = 0
+                while received_len < next_datalen:
+                    packet_len = s.recv_into(view[packet_offset+received_len:], next_datalen - received_len)
+                    if packet_len == 0:
+                        break
+                    received_len += packet_len
+                if received_len < next_datalen:
+                    print(f"Expected {next_datalen} bytes, but only received {received_len} bytes.")
+                    break
+            t1=time.time()
+            print(f"Received {num_samples} samples in ~{t1-t0} seconds (~{num_samples/(t1-t0)} samples per second)")
+            if incl_system_info:
+                info = self.get_system_information()
+            else:
+                info = {'system_information':'No system information requested'}
+            sample_rate = self.get_sample_rate()
+            sample_data = {'data_raw':data_raw,'sample_rate':sample_rate,'system_information':info}
+            return sample_data
 
     @staticmethod
     def parse_samples(sample_data,num_tones=2048):
