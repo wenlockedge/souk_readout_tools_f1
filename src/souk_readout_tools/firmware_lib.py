@@ -453,6 +453,9 @@ def set_sample_rate(r,sample_rate_hz):
     acc_len = int(acc_len)
     print(f'setting acc len {acc_len} = {acc_freq} Hz')
     r.accumulators[0].set_acc_len(acc_len)
+    r.sync.arm_sync(wait=False)
+    time.sleep(autosync_time_delay)
+    r.sync.sw_sync()
     return acc_freq
 
 
@@ -1213,161 +1216,173 @@ def fast_write_mixer(r_fast, phase_incs_tx_formatted,phase_incs_rx_formatted,ri_
     ri_steps_tx_formatted=ri_steps_tx_formatted.reshape(r_fast.mixer._n_parallel_chans, r_fast.mixer._n_serial_chans)
     ri_steps_rx_formatted=ri_steps_rx_formatted.reshape(r_fast.mixer._n_parallel_chans, r_fast.mixer._n_serial_chans)
     
-    # Seemingly can't write more than 512 bytes in one go.
-    # Assume nbytes is a multiple of 512
-    # n_write = (nbytes // 512)
-    maxwrite=512
-    n_write = (nbytes // maxwrite)
-    write_idxs = np.arange(n_write)
-    readback_delay = 0.00001
-    max_retries = 1000
+
     for i in range(len(phase_addrs_tx)):
         phase_incs_tx_bytes = phase_incs_tx_formatted[i].tobytes()
         phase_incs_rx_bytes = phase_incs_rx_formatted[i].tobytes()
         ri_steps_tx_bytes = ri_steps_tx_formatted[i].tobytes()
         ri_steps_rx_bytes = ri_steps_rx_formatted[i].tobytes()
-        for j in write_idxs:
-            raw = phase_incs_tx_bytes[j*maxwrite:(j+1)*maxwrite]
-            r_fast.mixer.host.transport.axil_mm[phase_addrs_tx[i]+j*maxwrite:phase_addrs_tx[i] +(j+1)*maxwrite] = raw
-            time.sleep(readback_delay)
-            ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_tx[i]+j*maxwrite:phase_addrs_tx[i] +(j+1)*maxwrite]
-            retry_count=0
-            while ret!=raw:
-                #retry write
-                retry_count+=1
-                r_fast.mixer.host.transport.axil_mm[phase_addrs_tx[i]+j*maxwrite:phase_addrs_tx[i] +(j+1)*maxwrite] = raw
-                time.sleep(readback_delay*retry_count)
-                ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_tx[i]+j*maxwrite:phase_addrs_tx[i] +(j+1)*maxwrite]
-                if retry_count>max_retries:
-                    raise IOError(f'Failed to write phase_incs_tx {j} to BRAM after {max_retries} tries')
-        for j in write_idxs:
-            raw = phase_incs_rx_bytes[j*maxwrite:(j+1)*maxwrite]
-            r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite] = raw
-            time.sleep(readback_delay)
-            ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite]
-            retry_count=0
-            while ret!=raw:
-                #retry write
-                retry_count+=1
-                r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite] = raw
-                time.sleep(readback_delay*retry_count)
-                ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite]
-                if retry_count>max_retries:
-                    raise IOError(f'Failed to write phase_incs_rx {j} to BRAM after {max_retries} tries')
-        for j in write_idxs:
-            raw = ri_steps_tx_bytes[j*maxwrite:(j+1)*maxwrite]
-            r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite] = raw
-            time.sleep(readback_delay)
-            ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite]
-            retry_count=0
-            while ret!=raw:
-                #retry write
-                retry_count+=1
-                r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite] = raw
-                time.sleep(readback_delay*retry_count)
-                ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite]
-                if retry_count>max_retries:
-                    raise IOError(f'Failed to write ri_steps_tx {j} to BRAM after {max_retries} tries')
-        for j in write_idxs:
-            raw = ri_steps_rx_bytes[j*maxwrite:(j+1)*maxwrite]
-            r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite] = raw
-            time.sleep(readback_delay)
-            ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite]
-            retry_count=0
-            while ret!=raw:
-                #retry write
-                retry_count+=1
-                r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite] = raw
-                time.sleep(readback_delay*retry_count)
-                ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite]
-                if retry_count>max_retries:
-                    raise IOError(f'Failed to write ri_steps_rx {j} to BRAM after {max_retries} tries')
-            
+        r_fast.mixer.write(phase_addrs_tx[i],phase_incs_tx_bytes)
+        r_fast.mixer.write(phase_addrs_rx[i],phase_incs_rx_bytes)
+        r_fast.mixer.write(ri_step_addrs_tx[i],ri_steps_tx_bytes)
+        r_fast.mixer.write(ri_step_addrs_rx[i],ri_steps_rx_bytes)
+
+    # # Seemingly can't write more than 512 bytes in one go.
+    # # Assume nbytes is a multiple of 512
+    # # n_write = (nbytes // 512)
+    # maxwrite=512
+    # n_write = (nbytes // maxwrite)
+    # write_idxs = np.arange(n_write)
+    # readback_delay = 0.00001
+    # max_retries = 1000
+    # for i in range(len(phase_addrs_tx)):
+    #     phase_incs_tx_bytes = phase_incs_tx_formatted[i].tobytes()
+    #     phase_incs_rx_bytes = phase_incs_rx_formatted[i].tobytes()
+    #     ri_steps_tx_bytes = ri_steps_tx_formatted[i].tobytes()
+    #     ri_steps_rx_bytes = ri_steps_rx_formatted[i].tobytes()
+    #     r_fast.mixer.write(phase_addrs_tx[i],)
+    #     for j in write_idxs:
+    #         raw = phase_incs_tx_bytes[j*maxwrite:(j+1)*maxwrite]
+    #         r_fast.mixer.host.transport.axil_mm[phase_addrs_tx[i]+j*maxwrite:phase_addrs_tx[i] +(j+1)*maxwrite] = raw
+    #         time.sleep(readback_delay)
+    #         ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_tx[i]+j*maxwrite:phase_addrs_tx[i] +(j+1)*maxwrite]
+    #         retry_count=0
+    #         while ret!=raw:
+    #             #retry write
+    #             retry_count+=1
+    #             r_fast.mixer.host.transport.axil_mm[phase_addrs_tx[i]+j*maxwrite:phase_addrs_tx[i] +(j+1)*maxwrite] = raw
+    #             time.sleep(readback_delay*retry_count)
+    #             ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_tx[i]+j*maxwrite:phase_addrs_tx[i] +(j+1)*maxwrite]
+    #             if retry_count>max_retries:
+    #                 raise IOError(f'Failed to write phase_incs_tx {j} to BRAM after {max_retries} tries')
     #     for j in write_idxs:
     #         raw = phase_incs_rx_bytes[j*maxwrite:(j+1)*maxwrite]
     #         r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite] = raw
-    #         time.sleep(0.00001)
+    #         time.sleep(readback_delay)
     #         ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite]
-    #         if ret==raw:
-    #             pass #print(f'phase_incs_rx {j:2d} write successful')
-    #         else:
-    #             # print(f'phase_incs_rx {j:2d} write failed')
-    #             for xx in range(10):
-    #                 # print('retrying write', xx)
-    #                 r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite] = raw
-    #                 time.sleep(0.00001)
-    #                 ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite]
-    #                 if ret==raw:
-    #                     # print('retry successful')
-    #                     break
-    #             if xx==9:
-    #                 print('\t\t\t\tretry failed')
-            
-    #         # while r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*512:phase_addrs_rx[i] +(j+1)*512] != raw:
-    #         #     time.sleep(0.00001)
-    #         #     r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*512:phase_addrs_rx[i] +(j+1)*512]=raw
-                
-    #         # r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*512:phase_addrs_rx[i] +(j+1)*512] = phase_incs_rx_bytes[j*512:(j+1)*512]
-    #         # # while not (np.frombuffer(r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*512:phase_addrs_rx[i] +(j+1)*512],dtype='<i4').copy() == np.frombuffer(phase_incs_rx_bytes[j*512:(j+1)*512],dtype='<i4').copy()).all():
-    #         # #     print('waiting for phase_incs_rx to update')
-    #         # #     time.sleep(0.001)
-    #         # r_fast.mv_as_int[(ri_step_addrs_tx[i]+j*512)//4:(ri_step_addrs_tx[i] +(j+1)*512)//4] = memoryview(ri_steps_tx_bytes[(j*512):((j+1)*512)]).cast('I')
+    #         retry_count=0
+    #         while ret!=raw:
+    #             #retry write
+    #             retry_count+=1
+    #             r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite] = raw
+    #             time.sleep(readback_delay*retry_count)
+    #             ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite]
+    #             if retry_count>max_retries:
+    #                 raise IOError(f'Failed to write phase_incs_rx {j} to BRAM after {max_retries} tries')
     #     for j in write_idxs:
     #         raw = ri_steps_tx_bytes[j*maxwrite:(j+1)*maxwrite]
     #         r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite] = raw
-    #         time.sleep(0.00001)
+    #         time.sleep(readback_delay)
     #         ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite]
-    #         if ret==raw:
-    #             pass #print(f'ri_steps_tx   {j:2d} write successful')
-    #         else:
-    #             # print(f'ri_steps_tx   {j:2d} write failed')
-    #             for xx in range(10):
-    #                 # print('retrying write', xx)
-    #                 r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite] = raw
-    #                 time.sleep(0.00001)
-    #                 ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite]
-    #                 if ret==raw:
-    #                     # print('retry successful')
-    #                     break
-    #             if xx==9:
-    #                 print('\t\t\t\tretry failed')
-    #         # while r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*512:ri_step_addrs_tx[i] +(j+1)*512] != raw:
-    #         #     time.sleep(0.00001)
-    #         #     r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*512:ri_step_addrs_tx[i] +(j+1)*512]=raw
-                
-    #         # r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*512:ri_step_addrs_tx[i] +(j+1)*512] = ri_steps_tx_bytes[j*512:(j+1)*512]
-    #         # # while not (np.frombuffer(r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*512:ri_step_addrs_tx[i] +(j+1)*512],dtype='<i4').copy() == np.frombuffer(ri_steps_tx_bytes[j*512:(j+1)*512],dtype='<i4').copy()).all():
-    #         # #     print('waiting for ri_steps_tx to update')
-    #         # #     time.sleep(0.001)
-    #         # r_fast.mv_as_int[(ri_step_addrs_rx[i]+j*512)//4:(ri_step_addrs_rx[i] +(j+1)*512)//4] = memoryview(ri_steps_rx_bytes[(j*512):((j+1)*512)]).cast('I')
+    #         retry_count=0
+    #         while ret!=raw:
+    #             #retry write
+    #             retry_count+=1
+    #             r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite] = raw
+    #             time.sleep(readback_delay*retry_count)
+    #             ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite]
+    #             if retry_count>max_retries:
+    #                 raise IOError(f'Failed to write ri_steps_tx {j} to BRAM after {max_retries} tries')
     #     for j in write_idxs:
     #         raw = ri_steps_rx_bytes[j*maxwrite:(j+1)*maxwrite]
     #         r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite] = raw
-    #         time.sleep(0.00001)
+    #         time.sleep(readback_delay)
     #         ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite]
-    #         if ret==raw:
-    #             pass #print(f'ri_steps_rx   {j:2d} write successful')
-    #         else:
-    #             # print(f'ri_steps_rx   {j:2d} write failed')
-    #             for xx in range(10):
-    #                 # print('retrying write', xx)
-    #                 r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite] = raw
-    #                 time.sleep(0.00001)
-    #                 ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite]
-    #                 if ret==raw:
-    #                     # print('retry successful')
-    #                     break
-    #             if xx==9:
-    #                 print('\t\t\t\tretry failed')
-    #         # while r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*512:ri_step_addrs_rx[i] +(j+1)*512] != raw:
-    #         #     time.sleep(0.00001)
-    #         #     r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*512:ri_step_addrs_rx[i] +(j+1)*512]=raw
+    #         retry_count=0
+    #         while ret!=raw:
+    #             #retry write
+    #             retry_count+=1
+    #             r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite] = raw
+    #             time.sleep(readback_delay*retry_count)
+    #             ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite]
+    #             if retry_count>max_retries:
+    #                 raise IOError(f'Failed to write ri_steps_rx {j} to BRAM after {max_retries} tries')
+            
+    # #     for j in write_idxs:
+    # #         raw = phase_incs_rx_bytes[j*maxwrite:(j+1)*maxwrite]
+    # #         r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite] = raw
+    # #         time.sleep(0.00001)
+    # #         ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite]
+    # #         if ret==raw:
+    # #             pass #print(f'phase_incs_rx {j:2d} write successful')
+    # #         else:
+    # #             # print(f'phase_incs_rx {j:2d} write failed')
+    # #             for xx in range(10):
+    # #                 # print('retrying write', xx)
+    # #                 r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite] = raw
+    # #                 time.sleep(0.00001)
+    # #                 ret = r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*maxwrite:phase_addrs_rx[i] +(j+1)*maxwrite]
+    # #                 if ret==raw:
+    # #                     # print('retry successful')
+    # #                     break
+    # #             if xx==9:
+    # #                 print('\t\t\t\tretry failed')
+            
+    # #         # while r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*512:phase_addrs_rx[i] +(j+1)*512] != raw:
+    # #         #     time.sleep(0.00001)
+    # #         #     r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*512:phase_addrs_rx[i] +(j+1)*512]=raw
                 
-    #         # r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*512:ri_step_addrs_rx[i] +(j+1)*512] = ri_steps_rx_bytes[j*512:(j+1)*512]
-    #         # # while not (np.frombuffer(r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*512:ri_step_addrs_rx[i] +(j+1)*512],dtype='<i4').copy() == np.frombuffer(ri_steps_rx_bytes[j*512:(j+1)*512],dtype='<i4').copy()).all():
-    #         # #     print('waiting for ri_steps_rx to update')
-    #         # #     time.sleep(0.001)
-    # # r_fast.mixer.host.transport.axil_mm.flush()
+    # #         # r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*512:phase_addrs_rx[i] +(j+1)*512] = phase_incs_rx_bytes[j*512:(j+1)*512]
+    # #         # # while not (np.frombuffer(r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]+j*512:phase_addrs_rx[i] +(j+1)*512],dtype='<i4').copy() == np.frombuffer(phase_incs_rx_bytes[j*512:(j+1)*512],dtype='<i4').copy()).all():
+    # #         # #     print('waiting for phase_incs_rx to update')
+    # #         # #     time.sleep(0.001)
+    # #         # r_fast.mv_as_int[(ri_step_addrs_tx[i]+j*512)//4:(ri_step_addrs_tx[i] +(j+1)*512)//4] = memoryview(ri_steps_tx_bytes[(j*512):((j+1)*512)]).cast('I')
+    # #     for j in write_idxs:
+    # #         raw = ri_steps_tx_bytes[j*maxwrite:(j+1)*maxwrite]
+    # #         r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite] = raw
+    # #         time.sleep(0.00001)
+    # #         ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite]
+    # #         if ret==raw:
+    # #             pass #print(f'ri_steps_tx   {j:2d} write successful')
+    # #         else:
+    # #             # print(f'ri_steps_tx   {j:2d} write failed')
+    # #             for xx in range(10):
+    # #                 # print('retrying write', xx)
+    # #                 r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite] = raw
+    # #                 time.sleep(0.00001)
+    # #                 ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*maxwrite:ri_step_addrs_tx[i] +(j+1)*maxwrite]
+    # #                 if ret==raw:
+    # #                     # print('retry successful')
+    # #                     break
+    # #             if xx==9:
+    # #                 print('\t\t\t\tretry failed')
+    # #         # while r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*512:ri_step_addrs_tx[i] +(j+1)*512] != raw:
+    # #         #     time.sleep(0.00001)
+    # #         #     r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*512:ri_step_addrs_tx[i] +(j+1)*512]=raw
+                
+    # #         # r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*512:ri_step_addrs_tx[i] +(j+1)*512] = ri_steps_tx_bytes[j*512:(j+1)*512]
+    # #         # # while not (np.frombuffer(r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]+j*512:ri_step_addrs_tx[i] +(j+1)*512],dtype='<i4').copy() == np.frombuffer(ri_steps_tx_bytes[j*512:(j+1)*512],dtype='<i4').copy()).all():
+    # #         # #     print('waiting for ri_steps_tx to update')
+    # #         # #     time.sleep(0.001)
+    # #         # r_fast.mv_as_int[(ri_step_addrs_rx[i]+j*512)//4:(ri_step_addrs_rx[i] +(j+1)*512)//4] = memoryview(ri_steps_rx_bytes[(j*512):((j+1)*512)]).cast('I')
+    # #     for j in write_idxs:
+    # #         raw = ri_steps_rx_bytes[j*maxwrite:(j+1)*maxwrite]
+    # #         r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite] = raw
+    # #         time.sleep(0.00001)
+    # #         ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite]
+    # #         if ret==raw:
+    # #             pass #print(f'ri_steps_rx   {j:2d} write successful')
+    # #         else:
+    # #             # print(f'ri_steps_rx   {j:2d} write failed')
+    # #             for xx in range(10):
+    # #                 # print('retrying write', xx)
+    # #                 r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite] = raw
+    # #                 time.sleep(0.00001)
+    # #                 ret = r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*maxwrite:ri_step_addrs_rx[i] +(j+1)*maxwrite]
+    # #                 if ret==raw:
+    # #                     # print('retry successful')
+    # #                     break
+    # #             if xx==9:
+    # #                 print('\t\t\t\tretry failed')
+    # #         # while r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*512:ri_step_addrs_rx[i] +(j+1)*512] != raw:
+    # #         #     time.sleep(0.00001)
+    # #         #     r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*512:ri_step_addrs_rx[i] +(j+1)*512]=raw
+                
+    # #         # r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*512:ri_step_addrs_rx[i] +(j+1)*512] = ri_steps_rx_bytes[j*512:(j+1)*512]
+    # #         # # while not (np.frombuffer(r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]+j*512:ri_step_addrs_rx[i] +(j+1)*512],dtype='<i4').copy() == np.frombuffer(ri_steps_rx_bytes[j*512:(j+1)*512],dtype='<i4').copy()).all():
+    # #         # #     print('waiting for ri_steps_rx to update')
+    # #         # #     time.sleep(0.001)
+    # # # r_fast.mixer.host.transport.axil_mm.flush()
 
 
 
