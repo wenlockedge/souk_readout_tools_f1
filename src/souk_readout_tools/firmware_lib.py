@@ -1397,20 +1397,20 @@ def apply_tone_frequency_settings_fast(r, r_fast, fast_tone_frequency_settings, 
     #     time.sleep(1)
     #     r.sync.sw_sync()
     t1=time.time()
-    print(f'setup time: {t1-t0}')
     fast_write_mixer(r_fast,
                       phase_incs_tx_formatted,
                         phase_incs_rx_formatted,
                           ri_steps_tx_formatted,
                             ri_steps_rx_formatted)
     t2=time.time()
-    print(f'write time: {t2-t1}')
     if autosync:
         # time.sleep(autosync_time_delay)
         r_fast.sync.arm_sync(wait=False)
         time.sleep(autosync_time_delay)
         r_fast.sync.sw_sync()
     t3=time.time()
+    print(f'setup time: {t1-t0}')
+    print(f'write time: {t2-t1}')
     print(f'sync time: {t3-t2}')
 
 
