@@ -1222,11 +1222,11 @@ def fast_write_mixer(r_fast, phase_incs_tx_formatted,phase_incs_rx_formatted,ri_
         phase_incs_rx_bytes = phase_incs_rx_formatted[i].tobytes()
         ri_steps_tx_bytes = ri_steps_tx_formatted[i].tobytes()
         ri_steps_rx_bytes = ri_steps_rx_formatted[i].tobytes()
-        r_fast.mixer.write(phase_addrs_tx[i],phase_incs_tx_bytes)
-        r_fast.mixer.write(phase_addrs_rx[i],phase_incs_rx_bytes)
-        r_fast.mixer.write(ri_step_addrs_tx[i],ri_steps_tx_bytes)
-        r_fast.mixer.write(ri_step_addrs_rx[i],ri_steps_rx_bytes)
-
+        r_fast.mixer.host.transport.axil_mm[phase_addrs_tx[i]:phase_addrs_tx[i]+nbytes] = phase_incs_tx_bytes
+        r_fast.mixer.host.transport.axil_mm[phase_addrs_rx[i]:phase_addrs_rx[i]+nbytes] = phase_incs_rx_bytes
+        r_fast.mixer.host.transport.axil_mm[ri_step_addrs_tx[i]:ri_step_addrs_tx[i]+nbytes] = ri_steps_tx_bytes
+        r_fast.mixer.host.transport.axil_mm[ri_step_addrs_rx[i]:ri_step_addrs_rx[i]+nbytes] = ri_steps_rx_bytes
+        
     # # Seemingly can't write more than 512 bytes in one go.
     # # Assume nbytes is a multiple of 512
     # # n_write = (nbytes // 512)
