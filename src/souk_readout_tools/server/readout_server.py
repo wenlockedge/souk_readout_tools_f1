@@ -880,7 +880,7 @@ class ReadoutServer:
                 t1=time.time()
                 print(_,'apply freqs:',t1-t0)
                 #time.sleep(delay)
-                firmware_lib._wait_for_acc(self.r,0,0.0001)
+                # firmware_lib._wait_for_acc(self.r,0,0.0001)
                 t2=time.time()
                 print(_,'wait for acc:',t2-t1)
                 payload, cnt, err =  self.prepare_frame(fast_read_params)
