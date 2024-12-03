@@ -430,7 +430,7 @@ class ReadoutClient:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self.request_server_address, self.request_server_port))
             message = {'request': 'test_tracking_loop', 'num_samples': num_samples
-                       ,'frequencies':frequencies,'delay':delay}
+                       ,'frequencies':frequencies.tolist(),'delay':delay}
             
             # Send message length
             message_data = json.dumps(message).encode()
