@@ -889,8 +889,8 @@ class ReadoutServer:
                 writer.write(payload)
                 t4=time.time()
                 print(_,'write:',t4-t3)
-                await writer.drain()
-                print(_,'drain:',time.time()-t4)
+            await writer.drain()
+            print(_,'drain:',time.time()-t4)
                 
             print('total packet counter errors:', err_count)
         except asyncio.CancelledError:
