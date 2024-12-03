@@ -1403,15 +1403,21 @@ def apply_tone_frequency_settings_fast(r, r_fast, fast_tone_frequency_settings, 
                           ri_steps_tx_formatted,
                             ri_steps_rx_formatted)
     t2=time.time()
+    print(f'setup time: {t1-t0}')
+    print(f'write time: {t2-t1}')
     if autosync:
         # time.sleep(autosync_time_delay)
         r_fast.sync.arm_sync(wait=False)
+        t3=time.time()
+        print(f'arm sync time: {t3-t2}')
         time.sleep(autosync_time_delay)
+        t4=time.time()
+        print(f'wait time: {t4-t3}')
         r_fast.sync.sw_sync()
-    t3=time.time()
-    print(f'setup time: {t1-t0}')
-    print(f'write time: {t2-t1}')
-    print(f'sync time: {t3-t2}')
+        t5=time.time()
+        print(f'sw sync time: {t5-t4}')
+    t6=time.time()
+    print(f'total sync time: {t6-t2}')
 
 
 def set_tone_frequencies(r, config_dict, tone_frequencies, autosync=True, detailed_output=False):

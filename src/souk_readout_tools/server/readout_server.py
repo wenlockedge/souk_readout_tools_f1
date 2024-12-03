@@ -878,6 +878,7 @@ class ReadoutServer:
                 # # data_bytes = data.tobytes()
                 firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings,autosync=True)
                 t1=time.time()
+                print(_,'apply freqs:',t1-t0)
                 time.sleep(delay)
                 # firmware_lib._wait_for_acc(self.r,0,0.0001)
                 t2=time.time()
@@ -885,12 +886,12 @@ class ReadoutServer:
                 t3=time.time()
                 writer.write(payload)
                 t4=time.time()
-                print(_,'apply freqs:',t1-t0)
-                print(_,'delay:',t2-t1)
                 print(_,'prepare frame:',t3-t2)
                 print(_,'write:',t4-t3)
+                t5=time.time()
+                print(_,'print time:',t5-t4)
             await writer.drain()
-            print(_,'drain:',time.time()-t4)
+            print(_,'drain:',time.time()-t5)
                 
             print('total packet counter errors:', err_count)
         except asyncio.CancelledError:
