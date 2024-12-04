@@ -889,9 +889,9 @@ class ReadoutServer:
                 # # data_bytes = data.tobytes()
                 period=10 # samples
                 if _%period<period//2:
-                    firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings1,autosync=True)
-                else:
                     firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings0,autosync=True)
+                else:
+                    firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings1,autosync=True)
                 t1=time.time()
                 print(_,'apply freqs:',t1-t0)
                 time.sleep(delay)
