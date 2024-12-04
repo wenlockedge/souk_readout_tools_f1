@@ -602,7 +602,9 @@ class ReadoutServer:
                     num_samples = message.get('num_samples')
                     freqs = np.array(message.get('freqs'))
                     delay = message.get('delay')
-                    task = asyncio.create_task(self.test_tracking_loop(writer, num_samples,freqs,delay))
+                    delta = message.get('delta')
+                    period = message.get('period')
+                    task = asyncio.create_task(self.test_tracking_loop(writer, num_samples,freqs,delay,delta,period))
                     self.tasks.append(task)
 
                 
@@ -868,11 +870,11 @@ class ReadoutServer:
             writer.close()
             await writer.wait_closed()
         
-    async def test_tracking_loop(self, writer, num_samples, freqs,delay):
+    async def test_tracking_loop(self, writer, num_samples, freqs,delay,delta,period):
         try:
             fast_read_params = firmware_lib.get_fast_read_params(self.r_fast)
             freq_settings0 = firmware_lib.prepare_tone_frequency_settings_fast(self.r, self.config, freqs,detailed_output=False)
-            freq_settings1 = firmware_lib.prepare_tone_frequency_settings_fast(self.r, self.config, freqs+1000,detailed_output=False)
+            freq_settings1 = firmware_lib.prepare_tone_frequency_settings_fast(self.r, self.config, freqs+delta,detailed_output=False)
             
             firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings0,autosync=True)
             freq_settings0['skip_chanmap_psb']=True
@@ -887,7 +889,6 @@ class ReadoutServer:
                 t0=time.time()
                 #cnt,data,err = firmware_lib.read_accumulated_data_fast(self.r_fast,fast_read_params)
                 # # data_bytes = data.tobytes()
-                period=10 # samples
                 if _%period<period//2:
                     firmware_lib.apply_tone_frequency_settings_fast(self.r,self.r_fast, freq_settings0,autosync=True)
                 else:
