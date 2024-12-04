@@ -604,7 +604,7 @@ class ReadoutServer:
                     delay = message.get('delay')
                     delta = message.get('delta')
                     period = message.get('period')
-                    period = message.get('index')
+                    index = message.get('index')
                     task = asyncio.create_task(self.test_tracking_loop(writer, num_samples,freqs,delay,delta,period,index))
                     self.tasks.append(task)
 
