@@ -1429,7 +1429,7 @@ def apply_tone_frequency_settings_fast(r, r_fast, fast_tone_frequency_settings, 
         # time.sleep(autosync_time_delay)
         t4=time.time()
         print(f'wait time: {t4-t3}')
-        r_fast.sync.sw_sync(wait=False)
+        r_fast.sync.sw_sync(wait=True)
         # time.sleep(0.001)
         t5=time.time()
         print(f'sw sync time: {t5-t4}')
