@@ -423,14 +423,14 @@ class ReadoutClient:
             sample_data = {'data_raw':data_raw,'sample_rate':sample_rate,'system_information':info}
             return sample_data
 
-    def test_tracking_loop(self,num_samples,frequencies,delay,delta,period,incl_system_info=False):
+    def test_tracking_loop(self,num_samples,frequencies,delay,delta,period,index,incl_system_info=False):
         """
         Acquire num_samples samples from the readout server and return concatenated raw data.
         The loop will write the frequencies between every accumulation."""
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self.request_server_address, self.request_server_port))
             message = {'request': 'test_tracking_loop', 'num_samples': num_samples
-                       ,'freqs':frequencies.tolist(),'delay':delay,'delta':delta,'period':period}
+                       ,'freqs':frequencies.tolist(),'delay':delay,'delta':delta,'period':period,'index':index}
             print(message)
             # Send message length
             message_data = json.dumps(message).encode()
