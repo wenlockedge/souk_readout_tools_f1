@@ -1092,11 +1092,11 @@ def prepare_sweep_settings_fast(r, config_dict, sweep_frequencies, detailed_outp
     #get the DAC/ADC analog frequencies given any analog up/down conversion
     #get the DAC/ADC analog frequencies given any analog up/down conversion
     if udc_connected:
-        dac_out_freqs = (tone_frequencies - udc_lo_frequency) / udc_sideband
-        adc_in_freqs = (tone_frequencies - udc_lo_frequency) / udc_sideband
+        dac_out_freqs = (sweep_frequencies - udc_lo_frequency) / udc_sideband
+        adc_in_freqs = (sweep_frequencies - udc_lo_frequency) / udc_sideband
     else:
-        dac_out_freqs = tone_frequencies
-        adc_in_freqs = tone_frequencies
+        dac_out_freqs = sweep_frequencies
+        adc_in_freqs = sweep_frequencies
 
     duc_freqs = dac_out_freqs
     ddc_freqs = adc_in_freqs
