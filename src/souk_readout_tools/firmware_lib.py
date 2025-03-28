@@ -800,6 +800,7 @@ def prepare_tone_frequency_settings(r, config_dict, tone_frequencies):
     rxbbmin=np.min(all_rx_bin_centers_hz)
     rxbbmax=np.max(all_rx_bin_centers_hz)+fft_rbw_hz
 
+
     if (dbb_freqs_tx > txbbmax).any():
         raise ValueError(f'TX frequencies exceed baseband bandwidth: dbb_freqs_tx={dbb_freqs_tx}')
     if (dbb_freqs_tx < txbbmin).any():
@@ -810,17 +811,15 @@ def prepare_tone_frequency_settings(r, config_dict, tone_frequencies):
         raise ValueError(f'RX frequencies exceed baseband bandwidth: dbb_freqs_rx={dbb_freqs_rx}')
 
     #get the nearest filterbank center frequencies for each tone
-    # Calculate the distance from each frequency to all bin centers
-    diff_tx = dbb_freqs_tx[:, np.newaxis] - all_tx_bin_centers_hz
-    diff_rx = dbb_freqs_rx[:, np.newaxis] - all_rx_bin_centers_hz
-    # Find the index of the minimum squared difference
-    tx_nearest_bins = np.argmin(diff_tx**2, axis=-1)
-    rx_nearest_bins = np.argmin(diff_rx**2, axis=-1)
-    
-    #get the offsets between the digital baseband and the filterbank center frequencies
-    tx_freq_offsets_hz = diff_tx[np.arange(len(dbb_freqs_tx)), tx_nearest_bins]
-    rx_freq_offsets_hz = diff_rx[np.arange(len(dbb_freqs_rx)), rx_nearest_bins]
-    
+
+    tx_nearest_bins = get_closest_bin_indices(dbb_freqs_tx, all_tx_bin_centers_hz)
+    rx_nearest_bins = get_closest_bin_indices(dbb_freqs_rx, all_rx_bin_centers_hz)
+
+    #get the frequency offsets for each tone
+    tx_freq_offsets_hz = dbb_freqs_tx - all_tx_bin_centers_hz[tx_nearest_bins]
+    rx_freq_offsets_hz = dbb_freqs_rx - all_rx_bin_centers_hz[rx_nearest_bins]
+
+        
     #get the phase increments and ri steps for the mixer LOs
     phase_incs_tx = tx_freq_offsets_hz / fft_rbw_hz * 2 * np.pi
     phase_incs_rx = rx_freq_offsets_hz / fft_rbw_hz * 2 * np.pi
@@ -988,16 +987,14 @@ def prepare_tone_frequency_settings_fast(r, config_dict, tone_frequencies,detail
         raise ValueError(f'RX frequencies exceed baseband bandwidth: dbb_freqs_rx={dbb_freqs_rx}')
 
     #get the nearest filterbank center frequencies for each tone
-    # Calculate the distance from each frequency to all bin centers
-    diff_tx = dbb_freqs_tx[:, np.newaxis] - all_tx_bin_centers_hz
-    diff_rx = dbb_freqs_rx[:, np.newaxis] - all_rx_bin_centers_hz
-    # Find the index of the minimum squared difference
-    tx_nearest_bins = np.argmin(diff_tx**2, axis=-1)
-    rx_nearest_bins = np.argmin(diff_rx**2, axis=-1)
-    #get the offsets between the digital baseband and the filterbank center frequencies
-    tx_freq_offsets_hz = diff_tx[channels, tx_nearest_bins]
-    rx_freq_offsets_hz = diff_rx[channels, rx_nearest_bins]
-    
+    tx_nearest_bins = get_closest_bin_indices(dbb_freqs_tx, all_tx_bin_centers_hz)
+    rx_nearest_bins = get_closest_bin_indices(dbb_freqs_rx, all_rx_bin_centers_hz)
+
+    #get the frequency offsets for each tone
+    tx_freq_offsets_hz = dbb_freqs_tx - all_tx_bin_centers_hz[tx_nearest_bins]
+    rx_freq_offsets_hz = dbb_freqs_rx - all_rx_bin_centers_hz[rx_nearest_bins]
+
+
     #get the phase increments and ri steps for the mixer LOs
     phase_incs_tx = tx_freq_offsets_hz / fft_rbw_hz * 2 * np.pi
     phase_incs_rx = rx_freq_offsets_hz / fft_rbw_hz * 2 * np.pi
@@ -1132,33 +1129,14 @@ def prepare_sweep_settings_fast(r, config_dict, sweep_frequencies, detailed_outp
     if (dbb_freqs_rx < rxbbmin).any():
         raise ValueError(f'RX frequencies exceed baseband bandwidth: dbb_freqs_rx={dbb_freqs_rx}')
     
-    # tx_nearest_bins = np.zeros(dbb_freqs_tx.shape,dtype=int)
-    # tx_freq_offsets_hz =np.zeros_like(dbb_freqs_tx)
-    # for p in points:
-    #     for c in channels:
-    #         tx_nearest_bins[p,c] = np.argmin(np.abs(dbb_freqs_tx[p,c] - all_tx_bin_centers_hz))
-    #         tx_freq_offsets_hz[p,c] = dbb_freqs_tx[p,c] - all_tx_bin_centers_hz[tx_nearest_bins[p,c]]
+    #get the nearest filterbank center frequencies for each tone
+    tx_nearest_bins = get_closest_bin_indices(dbb_freqs_tx, all_tx_bin_centers_hz)
+    rx_nearest_bins = get_closest_bin_indices(dbb_freqs_rx, all_rx_bin_centers_hz)
+    
+    #get the offsets between the digital baseband and the filterbank center frequencies
+    tx_freq_offsets_hz = dbb_freqs_tx - all_tx_bin_centers_hz[tx_nearest_bins]
+    rx_freq_offsets_hz = dbb_freqs_rx - all_rx_bin_centers_hz[rx_nearest_bins]
 
-    # rx_nearest_bins = np.zeros(dbb_freqs_rx.shape,dtype=int)
-    # rx_freq_offsets_hz =np.zeros_like(dbb_freqs_rx)
-    # for p in points:
-    #     for c in channels:
-    #         rx_nearest_bins[p,c] = np.argmin(np.abs(dbb_freqs_rx[p,c] - all_rx_bin_centers_hz))
-    #         rx_freq_offsets_hz[p,c] = dbb_freqs_rx[p,c] - all_rx_bin_centers_hz[rx_nearest_bins[p,c]]
-
-    # get the nearest filterbank center frequencies for each tone
-    tx_nearest_bins =  np.round(np.clip(dbb_freqs_tx/r.adc_clk_hz*fft_tx_nbins,-fft_tx_nbins/2,fft_tx_nbins/2-1)).astype(int)
-    tx_neg_bins = tx_nearest_bins<0
-    tx_nearest_bins[tx_neg_bins] += fft_tx_nbins
-    rx_nearest_bins =  np.round(np.clip(dbb_freqs_rx/r.adc_clk_hz*fft_rx_nbins,-fft_rx_nbins/2,fft_rx_nbins/2-1)).astype(int)
-    rx_neg_bins = rx_nearest_bins<0
-    rx_nearest_bins[rx_neg_bins] += fft_rx_nbins
-        
-    # #get the offsets between the digital baseband and the filterbank center frequencies
-    tx_freq_offsets_hz = dbb_freqs_tx - tx_nearest_bins/fft_tx_nbins*r.adc_clk_hz
-    tx_freq_offsets_hz[tx_neg_bins] += r.adc_clk_hz
-    rx_freq_offsets_hz = dbb_freqs_rx - rx_nearest_bins/fft_rx_nbins*r.adc_clk_hz
-    rx_freq_offsets_hz[rx_neg_bins] += r.adc_clk_hz
 
     #get the phase increments and ri steps for the mixer LOs
     phase_incs_tx = tx_freq_offsets_hz / fft_rbw_hz * 2 * np.pi
@@ -2631,6 +2609,38 @@ def set_tone_powers(r,config_dict,powers_dbm):
 
     return amp_details 
 
+def get_closest_bin_indices(freqs_hz, bin_centers_hz):
+    """
+    Efficiently find the closest bin index in `bin_centers_hz` for each frequency in `freqs_hz`.
+
+    :param freqs_hz: 1D or 2D array of frequencies [Hz]
+    :param bin_centers_hz: 1D array of bin center frequencies [Hz]
+
+    :return: Array of same shape as `freqs_hz` with bin indices
+    """
+    freqs = np.asarray(freqs_hz)
+    flat_freqs = freqs.ravel()
+
+    # Ensure bin centers are sorted
+    sort_idx = np.argsort(bin_centers_hz)
+    sorted_bins = bin_centers_hz[sort_idx]
+
+    # Search for insertion index (to the right)
+    idx_right = np.searchsorted(sorted_bins, flat_freqs, side='right')
+    idx_left = np.clip(idx_right - 1, 0, len(sorted_bins) - 1)
+    idx_right = np.clip(idx_right, 0, len(sorted_bins) - 1)
+
+    # Compare distances to left and right neighbors
+    dist_left = np.abs(flat_freqs - sorted_bins[idx_left])
+    dist_right = np.abs(flat_freqs - sorted_bins[idx_right])
+    closer_on_right = dist_right < dist_left
+
+    # Choose closer index
+    closest_sorted = np.where(closer_on_right, idx_right, idx_left)
+    # Map back to original bin indices
+    closest = sort_idx[closest_sorted]
+
+    return closest.reshape(freqs.shape)
 
 
 
