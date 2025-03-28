@@ -2609,39 +2609,42 @@ def set_tone_powers(r,config_dict,powers_dbm):
 
     return amp_details 
 
+
 def get_closest_bin_indices(freqs_hz, bin_centers_hz):
     """
     Efficiently find the closest bin index in `bin_centers_hz` for each frequency in `freqs_hz`.
 
-    :param freqs_hz: 1D or 2D array of frequencies [Hz]
+    :param freqs_hz: Scalar, 1D or 2D array of frequencies [Hz]
     :param bin_centers_hz: 1D array of bin center frequencies [Hz]
 
-    :return: Array of same shape as `freqs_hz` with bin indices
+    :return: Closest bin index or array of indices (matching input shape)
+    :rtype: int or np.ndarray of int
     """
     freqs = np.asarray(freqs_hz)
+    input_shape = freqs.shape
     flat_freqs = freqs.ravel()
 
     # Ensure bin centers are sorted
     sort_idx = np.argsort(bin_centers_hz)
     sorted_bins = bin_centers_hz[sort_idx]
 
-    # Search for insertion index (to the right)
+    # Vectorized nearest neighbor search
     idx_right = np.searchsorted(sorted_bins, flat_freqs, side='right')
     idx_left = np.clip(idx_right - 1, 0, len(sorted_bins) - 1)
     idx_right = np.clip(idx_right, 0, len(sorted_bins) - 1)
 
-    # Compare distances to left and right neighbors
     dist_left = np.abs(flat_freqs - sorted_bins[idx_left])
     dist_right = np.abs(flat_freqs - sorted_bins[idx_right])
     closer_on_right = dist_right < dist_left
 
-    # Choose closer index
     closest_sorted = np.where(closer_on_right, idx_right, idx_left)
-    # Map back to original bin indices
     closest = sort_idx[closest_sorted]
+    closest = closest.reshape(input_shape)
 
-    return closest.reshape(freqs.shape)
-
+    # Return a scalar if input was a scalar
+    if np.isscalar(freqs_hz) or freqs.ndim == 0:
+        return int(closest)
+    return closest
 
 
 
